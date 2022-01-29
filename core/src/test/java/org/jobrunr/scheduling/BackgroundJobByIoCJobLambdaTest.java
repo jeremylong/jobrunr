@@ -18,6 +18,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.MDC;
 
+import java.io.Serializable;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -277,8 +278,28 @@ public class BackgroundJobByIoCJobLambdaTest {
         assertThat(storageProvider.getJobById(jobId)).hasJobName("Doing some hard work for user John Doe (customerId: 1)");
     }
 
+    @Test
+    void testGenericParameters() {
+        UUID uuid = UUID.randomUUID();
+        JobId jobId = queue(SomeTestJob.class, uuid);
+        await().atMost(30, SECONDS).until(() -> storageProvider.getJobById(jobId).hasState(SUCCEEDED));
+    }
+
+    private <PARAM extends Serializable, JOB extends TestService.SomeJob<PARAM>> JobId queue(Class<JOB> jobClass, PARAM parameter) {
+        return BackgroundJob.<TestService>enqueue((service) -> service.process(jobClass, parameter));
+    }
+
     private Stream<UUID> getWorkStream() {
         return IntStream.range(0, 5)
                 .mapToObj(i -> UUID.randomUUID());
+    }
+
+    public static class SomeTestJob implements TestService.SomeJob<UUID> {
+
+        @Override
+        public void process(UUID uuid) {
+            System.out.println("Received uuid: " + uuid);
+            assertThat(uuid).isInstanceOf(UUID.class);
+        }
     }
 }

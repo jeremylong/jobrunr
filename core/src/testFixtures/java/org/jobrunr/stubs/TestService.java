@@ -12,6 +12,8 @@ import org.jobrunr.scheduling.BackgroundJob;
 import org.slf4j.MDC;
 
 import java.io.File;
+import java.io.Serializable;
+import java.lang.reflect.InvocationTargetException;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.time.Instant;
@@ -287,6 +289,13 @@ public class TestService implements TestServiceInterface {
         System.out.println("Found following MDC keys: " + result);
     }
 
+    public <JOB extends SomeJob<PARAM>, PARAM extends Serializable> void process(Class<JOB> jobClass, PARAM parameter) throws ReflectiveOperationException {
+        System.out.println("Received job: " + jobClass.getName() + "; parameter: " + parameter + " (type " + parameter.getClass().getName() + ")");
+        JOB job = jobClass.getConstructor().newInstance();
+        job.process(parameter);
+        System.out.println("Successfully processed generic job");
+    }
+
     public static class Work {
 
         private int workCount;
@@ -430,5 +439,11 @@ public class TestService implements TestServiceInterface {
             System.out.println("Simple Command " + string + " " + integer);
             return null;
         }
+    }
+
+    public interface SomeJob<Param extends Serializable> {
+
+        void process(Param param);
+
     }
 }
